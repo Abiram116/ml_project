@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MNIST Digit Prediction</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism.min.css" rel="stylesheet">
+    <style>
+        .drop-zone {
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            transition: border 0.3s ease;
+        }
+        .drop-zone.dragover {
+            border-color: #4F46E5;
+            background-color: rgba(79, 70, 229, 0.1);
+        }
+        .code-block {
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 1rem;
+            margin: 1rem 0;
+            overflow-x: auto;
+        }
+        #preview-image {
+            max-width: 280px;
+            max-height: 280px;
+            object-fit: contain;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-4xl">
+        <!-- Header Section -->
+        <header class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-gray-900 mb-4">MNIST Digit Prediction</h1>
+            <p class="text-lg text-gray-600">Upload a handwritten digit image and let our AI predict what number it is!</p>
+            <div class="mt-4 text-sm text-gray-500">
+                <p>For best results:</p>
+                <ul class="list-disc list-inside">
+                    <li>Use a clear, well-lit image</li>
+                    <li>Single digit only</li>
+                    <li>Dark digit on light background</li>
+                    <li>Square aspect ratio preferred</li>
+                </ul>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main>
+            <!-- Upload Section -->
+            <section class="bg-white rounded-lg shadow-md p-6 mb-8">
+                <form method="POST" enctype="multipart/form-data" id="upload-form" class="space-y-4">
+                    {% csrf_token %}
+                    <div class="drop-zone" id="drop-zone">
+                        <label for="image" class="block text-gray-700 font-medium mb-2">Upload a Handwritten Image</label>
+                        <input type="file" name="image" id="image" accept="image/*" required
+                               class="hidden" onchange="handleImageSelect(this)">
+                        <div class="mt-2">
+                            <button type="button" onclick="document.getElementById('image').click()"
+                                    class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition">
+                                Choose File
+                            </button>
+                            <p id="file-name" class="text-gray-500 mt-2">No file chosen</p>
+                        </div>
+                        <!-- Image preview -->
+                        <div id="preview-container" class="mt-4 hidden">
+                            <img id="preview-image" src="#" alt="Preview" class="mx-auto rounded-lg shadow-sm">
+                        </div>
+                        <!-- Error message container -->
+                        <div id="error-message" class="mt-2 text-red-600 hidden"></div>
+                    </div>
+                    <button type="submit" id="submit-btn"
+                            class="w-full bg-green-600 text-white px-6 py-3 rounded-md hover:bg-green-700 transition">
+                        Analyze Image
+                    </button>
+                </form>
+            </section>
+
+            <!-- Results Section -->
+            {% if predicted_class %}
+            <section class="bg-white rounded-lg shadow-md p-6 mb-8">
+                <div class="grid md:grid-cols-2 gap-6">
+                    {% if file_url %}
+                    <div>
+                        <h3 class="text-xl font-semibold mb-4">Processed Image</h3>
+                        <img src="{{ file_url }}" alt="Processed Image" 
+                             class="max-w-full h-auto rounded-lg shadow-sm">
+                        <p class="text-sm text-gray-500 mt-2">The image above shows how your input was processed for the model</p>
+                    </div>
+                    {% endif %}
+                    
+                    <div>
+                        <h3 class="text-xl font-semibold mb-4">Prediction Result</h3>
+                        <div class="bg-gray-100 rounded-lg p-6 text-center">
+                            <p class="text-3xl font-bold text-indigo-600">{{ predicted_class }}</p>
+                            <p class="text-gray-600 mt-2">Predicted Digit</p>
+                            {% if confidence %}
+                            <p class="text-sm text-gray-500 mt-2">Confidence: {{ confidence|floatformat:2 }}%</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </section>
+            {% endif %}
+
+            {% if error_message %}
+            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-8" role="alert">
+                <strong class="font-bold">Error:</strong>
+                <span class="block sm:inline">{{ error_message }}</span>
+            </div>
+            {% endif %}
+
+            <!-- Model Information -->
+            <section class="bg-white rounded-lg shadow-md p-6 mb-8">
+                <h2 class="text-2xl font-bold mb-4">Model Performance</h2>
+                <div class="bg-indigo-100 rounded-lg p-4 mb-6">
+                    <p class="text-lg">
+                        Model Accuracy: 
+                        <span class="font-semibold">{{ accuracy|floatformat:2 }}%</span>
+                    </p>
+                </div>
+            </section>
+
+            <!-- Technical Details -->
+            <section class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-2xl font-bold mb-6">Technical Implementation</h2>
+                
+                <div class="mb-8">
+                    <h3 class="text-xl font-semibold mb-4">Image Preprocessing</h3>
+                    <pre class="code-block language-python"><code>img = Image.open(image_path).convert('L')  # Convert to grayscale
+                        img = img.resize((28, 28))  # Resize to 28x28
+                        img_array = np.array(img) / 255.0  # Normalize to [0, 1]
+                        img_array = 1 - img_array  # Invert if necessary (black digits on white background)
+                        img_array = img_array.reshape(28, 28, 1)  # Reshape to (28, 28, 1) for the model
+                        img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension (1, 28, 28, 1)
+                        return img_array
+                </div>
+
+                <div class="mb-8">
+                    <h3 class="text-xl font-semibold mb-4">Model Architecture</h3>
+                    <pre class="code-block language-python"><code>model = models.Sequential([
+    layers.Conv2D(32, (3, 3), activation='relu', input_shape=(28, 28, 1)),
+    layers.MaxPooling2D((2, 2)),
+    layers.Conv2D(64, (3, 3), activation='relu'),
+    layers.MaxPooling2D((2, 2)),
+    layers.Conv2D(64, (3, 3), activation='relu'),
+    layers.Flatten(),
+    layers.Dense(64, activation='relu'),
+    layers.Dropout(0.2),
+    layers.Dense(10, activation='softmax')
+])</code></pre>
+                </div>
+
+                <div>
+                    <h3 class="text-xl font-semibold mb-4">Model Training</h3>
+                    <pre class="code-block language-python"><code>model.compile(optimizer='adam',
+                        loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+                        metrics=['accuracy'])</code></pre>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="mt-12 text-center text-gray-600">
+            <p>Built with TensorFlow and Django</p>
+        </footer>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-python.min.js"></script>
+    <script>
+        function handleImageSelect(input) {
+            const file = input.files[0];
+            const errorElement = document.getElementById('error-message');
+            const previewContainer = document.getElementById('preview-container');
+            const previewImage = document.getElementById('preview-image');
+            const submitBtn = document.getElementById('submit-btn');
+            
+            // Reset error state
+            errorElement.classList.add('hidden');
+            errorElement.textContent = '';
+            submitBtn.disabled = false;
+            
+            if (file) {
+                // Update filename display
+                document.getElementById('file-name').textContent = file.name;
+                
+                // Validate file type
+                if (!file.type.startsWith('image/')) {
+                    showError('Please upload an image file');
+                    return;
+                }
+                
+                // Validate file size (max 5MB)
+                if (file.size > 5 * 1024 * 1024) {
+                    showError('Image size must be less than 5MB');
+                    return;
+                }
+                
+                // Show preview
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    previewImage.src = e.target.result;
+                    previewContainer.classList.remove('hidden');
+                    
+                    // Validate image dimensions
+                    const img = new Image();
+                    img.onload = function() {
+                        if (img.width < 28 || img.height < 28) {
+                            showError('Image dimensions must be at least 28x28 pixels');
+                        }
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            } else {
+                document.getElementById('file-name').textContent = 'No file chosen';
+                previewContainer.classList.add('hidden');
+            }
+        }
+
+        function showError(message) {
+            const errorElement = document.getElementById('error-message');
+            const submitBtn = document.getElementById('submit-btn');
+            errorElement.textContent = message;
+            errorElement.classList.remove('hidden');
+            submitBtn.disabled = true;
+        }
+
+        // Drag and drop handling
+        const dropZone = document.getElementById('drop-zone');
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file) {
+                const input = document.getElementById('image');
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(file);
+                input.files = dataTransfer.files;
+                handleImageSelect(input);
+            }
+        });
+
+        // Loading state
+        document.getElementById('upload-form').addEventListener('submit', function(e) {
+            const submitButton = this.querySelector('button[type="submit"]');
+            if (!submitButton.disabled) {
+                submitButton.disabled = true;
+                submitButton.innerHTML = `
+                    <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Processing...
+                `;
+            }
+        });
+    </script>
+</body>
+</html>     
