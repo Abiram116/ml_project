@@ -8,98 +8,158 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism.min.css" rel="stylesheet">
     <style>
         .drop-zone {
-            border: 2px dashed #ccc;
-            border-radius: 8px;
-            padding: 20px;
+            border: 2px dashed #e2e8f0;
+            border-radius: 16px;
+            padding: 2rem;
             text-align: center;
-            transition: border 0.3s ease;
+            transition: all 0.3s ease;
+            background: rgba(249, 250, 251, 0.8);
+            backdrop-filter: blur(8px);
         }
         .drop-zone.dragover {
-            border-color: #4F46E5;
-            background-color: rgba(79, 70, 229, 0.1);
+            border-color: #6366f1;
+            background: rgba(99, 102, 241, 0.05);
+            transform: scale(1.02);
         }
         .code-block {
-            background: #f8f9fa;
-            border-radius: 6px;
-            padding: 1rem;
-            margin: 1rem 0;
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin: 1.5rem 0;
             overflow-x: auto;
+            border: 1px solid #e2e8f0;
         }
         #preview-image {
             max-width: 280px;
             max-height: 280px;
             object-fit: contain;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
         }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
-    <div class="container mx-auto px-4 py-8 max-w-4xl">
+    <!-- Decorative background elements -->
+    <div class="fixed inset-0 -z-10 overflow-hidden">
+        <div class="absolute -top-1/2 -left-1/2 w-full h-full blur-3xl opacity-30 animate-pulse"
+             style="background: radial-gradient(circle, rgba(99,102,241,0.2) 0%, rgba(139,92,246,0.1) 50%, rgba(255,255,255,0) 70%);"></div>
+        <div class="absolute -bottom-1/2 -right-1/2 w-full h-full blur-3xl opacity-30 animate-pulse delay-1000"
+             style="background: radial-gradient(circle, rgba(139,92,246,0.2) 0%, rgba(99,102,241,0.1) 50%, rgba(255,255,255,0) 70%);"></div>
+    </div>
+
+    <div class="container mx-auto px-4 py-12 max-w-5xl relative">
         <!-- Header Section -->
-        <header class="text-center mb-12">
-            <h1 class="text-4xl font-bold text-gray-900 mb-4">MNIST Digit Prediction</h1>
-            <p class="text-lg text-gray-600">Upload a handwritten digit image and let our AI predict what number it is!</p>
-            <div class="mt-4 text-sm text-gray-500">
-                <p>For best results:</p>
-                <ul class="list-disc list-inside">
-                    <li>Use a clear, well-lit image</li>
-                    <li>Single digit only</li>
-                    <li>Dark digit on light background</li>
-                    <li>Square aspect ratio preferred</li>
-                </ul>
+        <header class="text-center mb-16">
+            <h1 class="text-5xl font-bold text-gray-900 mb-6 tracking-tight">MNIST Digit Prediction</h1>
+            <p class="text-xl text-gray-600 mb-8 leading-relaxed max-w-2xl mx-auto">
+                Upload a handwritten digit image and let our AI predict what number it is!
+            </p>
+            <div class="inline-block bg-white rounded-2xl shadow-lg p-6">
+                <div class="text-sm text-gray-600">
+                    <h3 class="font-semibold mb-3">For best results:</h3>
+                    <ul class="space-y-2">
+                        <li class="flex items-center">
+                            <svg class="w-4 h-4 text-indigo-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/>
+                            </svg>
+                            Use a clear, well-lit image
+                        </li>
+                        <li class="flex items-center">
+                            <svg class="w-4 h-4 text-indigo-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/>
+                            </svg>
+                            Single digit only
+                        </li>
+                        <li class="flex items-center">
+                            <svg class="w-4 h-4 text-indigo-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/>
+                            </svg>
+                            Dark digit on light background
+                        </li>
+                        <li class="flex items-center">
+                            <svg class="w-4 h-4 text-indigo-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/>
+                            </svg>
+                            Square aspect ratio preferred
+                        </li>
+                    </ul>
+                </div>
             </div>
         </header>
 
         <!-- Main Content -->
-        <main>
+        <main class="space-y-8">
             <!-- Upload Section -->
-            <section class="bg-white rounded-lg shadow-md p-6 mb-8">
-                <form method="POST" enctype="multipart/form-data" id="upload-form" class="space-y-4">
+            <section class="glass-card rounded-2xl shadow-xl p-8 mb-12">
+                <form method="POST" enctype="multipart/form-data" id="upload-form" class="space-y-6">
                     {% csrf_token %}
                     <div class="drop-zone" id="drop-zone">
-                        <label for="image" class="block text-gray-700 font-medium mb-2">Upload a Handwritten Image</label>
+                        <label for="image" class="block text-gray-700 font-medium mb-4 text-lg">Upload a Handwritten Image</label>
                         <input type="file" name="image" id="image" accept="image/*" required
                                class="hidden" onchange="handleImageSelect(this)">
-                        <div class="mt-2">
+                        <div class="space-y-4">
                             <button type="button" onclick="document.getElementById('image').click()"
-                                    class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition">
+                                    class="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-6 py-3 rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                                 Choose File
                             </button>
-                            <p id="file-name" class="text-gray-500 mt-2">No file chosen</p>
+                            <p id="file-name" class="text-gray-500">No file chosen</p>
                         </div>
                         <!-- Image preview -->
-                        <div id="preview-container" class="mt-4 hidden">
-                            <img id="preview-image" src="#" alt="Preview" class="mx-auto rounded-lg shadow-sm">
+                        <div id="preview-container" class="mt-6 hidden">
+                            <div class="relative inline-block">
+                                <img id="preview-image" src="#" alt="Preview" class="mx-auto">
+                                <div class="absolute inset-0 rounded-lg ring-4 ring-indigo-500 ring-opacity-50 pointer-events-none"></div>
+                            </div>
                         </div>
                         <!-- Error message container -->
-                        <div id="error-message" class="mt-2 text-red-600 hidden"></div>
+                        <div id="error-message" class="mt-4 text-red-600 hidden"></div>
                     </div>
                     <button type="submit" id="submit-btn"
-                            class="w-full bg-green-600 text-white px-6 py-3 rounded-md hover:bg-green-700 transition">
-                        Analyze Image
+                            class="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-6 py-3 rounded-xl 
+                                    hover:from-indigo-700 hover:to-indigo-800 transition transform hover:scale-105 
+                                    focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                Analyze Image
                     </button>
+
                 </form>
             </section>
 
             <!-- Results Section -->
             {% if predicted_class %}
-            <section class="bg-white rounded-lg shadow-md p-6 mb-8">
-                <div class="grid md:grid-cols-2 gap-6">
+            <section class="glass-card rounded-2xl shadow-xl p-8 mb-12">
+                <div class="grid md:grid-cols-2 gap-8">
                     {% if file_url %}
-                    <div>
-                        <h3 class="text-xl font-semibold mb-4">Processed Image</h3>
-                        <img src="{{ file_url }}" alt="Processed Image" 
-                             class="max-w-full h-auto rounded-lg shadow-sm">
-                        <p class="text-sm text-gray-500 mt-2">The image above shows how your input was processed for the model</p>
+                    <div class="space-y-4">
+                        <h3 class="text-2xl font-bold text-gray-900">Processed Image</h3>
+                        <div class="relative">
+                            <img src="{{ file_url }}" alt="Processed Image" 
+                                 class="w-full rounded-xl shadow-lg">
+                            <div class="absolute inset-0 rounded-xl ring-4 ring-indigo-500 ring-opacity-50 pointer-events-none"></div>
+                        </div>
+                        <p class="text-sm text-gray-600">The image above shows how your input was processed for the model</p>
                     </div>
                     {% endif %}
                     
-                    <div>
-                        <h3 class="text-xl font-semibold mb-4">Prediction Result</h3>
-                        <div class="bg-gray-100 rounded-lg p-6 text-center">
-                            <p class="text-3xl font-bold text-indigo-600">{{ predicted_class }}</p>
-                            <p class="text-gray-600 mt-2">Predicted Digit</p>
+                    <div class="space-y-4">
+                        <h3 class="text-2xl font-bold text-gray-900">Prediction Result</h3>
+                        <div class="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl p-8 text-center">
+                            <p class="text-6xl font-bold text-indigo-600 mb-4">{{ predicted_class }}</p>
+                            <p class="text-xl text-gray-700">Predicted Digit</p>
                             {% if confidence %}
-                            <p class="text-sm text-gray-500 mt-2">Confidence: {{ confidence|floatformat:2 }}%</p>
+                            <div class="mt-4 flex items-center justify-center space-x-2">
+                                <div class="h-2 w-32 bg-gray-200 rounded-full">
+                                    <div class="h-2 bg-indigo-600 rounded-full" style="width: {{ confidence }}%"></div>
+                                </div>
+                                <span class="text-sm text-gray-600">{{ confidence|floatformat:2 }}% confidence</span>
+                            </div>
                             {% endif %}
                         </div>
                     </div>
@@ -108,41 +168,47 @@
             {% endif %}
 
             {% if error_message %}
-            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-8" role="alert">
-                <strong class="font-bold">Error:</strong>
-                <span class="block sm:inline">{{ error_message }}</span>
+            <div class="bg-red-50 border-l-4 border-red-500 p-6 rounded-xl mb-12" role="alert">
+                <div class="flex items-center">
+                    <svg class="w-6 h-6 text-red-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                    <div>
+                        <p class="font-medium text-red-800">{{ error_message }}</p>
+                    </div>
+                </div>
             </div>
             {% endif %}
 
             <!-- Model Information -->
-            <section class="bg-white rounded-lg shadow-md p-6 mb-8">
-                <h2 class="text-2xl font-bold mb-4">Model Performance</h2>
-                <div class="bg-indigo-100 rounded-lg p-4 mb-6">
-                    <p class="text-lg">
-                        Model Accuracy: 
-                        <span class="font-semibold">{{ accuracy|floatformat:2 }}%</span>
-                    </p>
+            <section class="glass-card rounded-2xl shadow-xl p-8 mb-12">
+                <h2 class="text-3xl font-bold text-gray-900 mb-6">Model Performance</h2>
+                <div class="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl p-6">
+                    <div class="flex items-center justify-between">
+                        <p class="text-xl text-gray-700">Model Accuracy</p>
+                        <p class="text-3xl font-bold text-indigo-600">{{ accuracy|floatformat:2 }}%</p>
+                    </div>
                 </div>
             </section>
 
             <!-- Technical Details -->
-            <section class="bg-white rounded-lg shadow-md p-6">
-                <h2 class="text-2xl font-bold mb-6">Technical Implementation</h2>
+            <section class="glass-card rounded-2xl shadow-xl p-8">
+                <h2 class="text-3xl font-bold text-gray-900 mb-8">Technical Implementation</h2>
                 
-                <div class="mb-8">
-                    <h3 class="text-xl font-semibold mb-4">Image Preprocessing</h3>
-                    <pre class="code-block language-python"><code>img = Image.open(image_path).convert('L')  # Convert to grayscale
-                        img = img.resize((28, 28))  # Resize to 28x28
-                        img_array = np.array(img) / 255.0  # Normalize to [0, 1]
-                        img_array = 1 - img_array  # Invert if necessary (black digits on white background)
-                        img_array = img_array.reshape(28, 28, 1)  # Reshape to (28, 28, 1) for the model
-                        img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension (1, 28, 28, 1)
-                        return img_array
-                </div>
+                <div class="space-y-8">
+                    <div>
+                        <h3 class="text-2xl font-semibold text-gray-800 mb-4">Image Preprocessing</h3>
+                        <pre class="code-block language-python"><code>img = Image.open(image_path).convert('L')  # Convert to grayscale
+img = img.resize((28, 28))  # Resize to 28x28
+img_array = np.array(img) / 255.0  # Normalize to [0, 1]
+img_array = 1 - img_array  # Invert if necessary
+img_array = img_array.reshape(28, 28, 1)  # Reshape for model
+img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension</code></pre>
+                    </div>
 
-                <div class="mb-8">
-                    <h3 class="text-xl font-semibold mb-4">Model Architecture</h3>
-                    <pre class="code-block language-python"><code>model = models.Sequential([
+                    <div>
+                        <h3 class="text-2xl font-semibold text-gray-800 mb-4">Model Architecture</h3>
+                        <pre class="code-block language-python"><code>model = models.Sequential([
     layers.Conv2D(32, (3, 3), activation='relu', input_shape=(28, 28, 1)),
     layers.MaxPooling2D((2, 2)),
     layers.Conv2D(64, (3, 3), activation='relu'),
@@ -153,124 +219,71 @@
     layers.Dropout(0.2),
     layers.Dense(10, activation='softmax')
 ])</code></pre>
-                </div>
+                    </div>
 
-                <div>
-                    <h3 class="text-xl font-semibold mb-4">Model Training</h3>
-                    <pre class="code-block language-python"><code>model.compile(optimizer='adam',
-                        loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-                        metrics=['accuracy'])</code></pre>
+                    <div>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-semibold text-gray-800 mb-4">Training Pipeline</h3>
+                        <pre class="code-block language-python"><code># Data Preparation
+from tensorflow.keras.datasets import mnist
+from tensorflow.keras.utils import to_categorical
+
+# Load MNIST data
+(train_images, train_labels), (test_images, test_labels) = mnist.load_data()
+
+# Normalize and reshape data
+train_images = train_images.reshape((60000, 28, 28, 1)).astype('float32') / 255
+test_images = test_images.reshape((10000, 28, 28, 1)).astype('float32') / 255
+
+# One-hot encode labels
+train_labels = to_categorical(train_labels)
+test_labels = to_categorical(test_labels)
+
+# Model Compilation
+model.compile(optimizer='adam',
+              loss='categorical_crossentropy',
+              metrics=['accuracy'])
+
+# Model Training
+model.fit(train_images, train_labels, epochs=5, batch_size=64, validation_split=0.1)
+
+# Model Evaluation
+test_loss, test_accuracy = model.evaluate(test_images, test_labels)
+print(f"Test accuracy: {test_accuracy * 100:.2f}%")</code></pre>
+                    </div>
                 </div>
             </section>
         </main>
-
-        <!-- Footer -->
-        <footer class="mt-12 text-center text-gray-600">
-            <p>Built with TensorFlow and Django</p>
-        </footer>
     </div>
 
-    <!-- Scripts -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-python.min.js"></script>
     <script>
+        // JavaScript for handling file input and image preview
         function handleImageSelect(input) {
             const file = input.files[0];
-            const errorElement = document.getElementById('error-message');
             const previewContainer = document.getElementById('preview-container');
             const previewImage = document.getElementById('preview-image');
-            const submitBtn = document.getElementById('submit-btn');
-            
-            // Reset error state
-            errorElement.classList.add('hidden');
-            errorElement.textContent = '';
-            submitBtn.disabled = false;
-            
+            const fileName = document.getElementById('file-name');
+            const errorMessage = document.getElementById('error-message');
+
             if (file) {
-                // Update filename display
-                document.getElementById('file-name').textContent = file.name;
-                
-                // Validate file type
-                if (!file.type.startsWith('image/')) {
-                    showError('Please upload an image file');
-                    return;
-                }
-                
-                // Validate file size (max 5MB)
-                if (file.size > 5 * 1024 * 1024) {
-                    showError('Image size must be less than 5MB');
-                    return;
-                }
-                
-                // Show preview
                 const reader = new FileReader();
-                reader.onload = function(e) {
+                reader.onload = function (e) {
                     previewImage.src = e.target.result;
                     previewContainer.classList.remove('hidden');
-                    
-                    // Validate image dimensions
-                    const img = new Image();
-                    img.onload = function() {
-                        if (img.width < 28 || img.height < 28) {
-                            showError('Image dimensions must be at least 28x28 pixels');
-                        }
-                    };
-                    img.src = e.target.result;
+                    errorMessage.classList.add('hidden');
+                };
+                reader.onerror = function () {
+                    errorMessage.textContent = "Error loading image. Please try again.";
+                    errorMessage.classList.remove('hidden');
                 };
                 reader.readAsDataURL(file);
+                fileName.textContent = file.name;
             } else {
-                document.getElementById('file-name').textContent = 'No file chosen';
                 previewContainer.classList.add('hidden');
+                fileName.textContent = "No file chosen";
             }
         }
-
-        function showError(message) {
-            const errorElement = document.getElementById('error-message');
-            const submitBtn = document.getElementById('submit-btn');
-            errorElement.textContent = message;
-            errorElement.classList.remove('hidden');
-            submitBtn.disabled = true;
-        }
-
-        // Drag and drop handling
-        const dropZone = document.getElementById('drop-zone');
-
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.classList.add('dragover');
-        });
-
-        dropZone.addEventListener('dragleave', () => {
-            dropZone.classList.remove('dragover');
-        });
-
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('dragover');
-            const file = e.dataTransfer.files[0];
-            if (file) {
-                const input = document.getElementById('image');
-                const dataTransfer = new DataTransfer();
-                dataTransfer.items.add(file);
-                input.files = dataTransfer.files;
-                handleImageSelect(input);
-            }
-        });
-
-        // Loading state
-        document.getElementById('upload-form').addEventListener('submit', function(e) {
-            const submitButton = this.querySelector('button[type="submit"]');
-            if (!submitButton.disabled) {
-                submitButton.disabled = true;
-                submitButton.innerHTML = `
-                    <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Processing...
-                `;
-            }
-        });
     </script>
 </body>
-</html>     
+</html>
