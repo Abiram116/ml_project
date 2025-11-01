@@ -25,14 +25,10 @@ A full-stack web application that predicts handwritten digits using a Convolutio
 ```bash
 # Clone the repository
 https://github.com/Abiram116/ml_project.git
-cd mlproject
+cd ml_project
 
-# Create a virtual environment
-python -m venv venv
-source venv/bin/activate  # on Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
+# (Optional) Use your Conda environment
+# conda activate c-env
 
 # Run the Django server
 python manage.py runserver

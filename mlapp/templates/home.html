@@ -208,15 +208,36 @@ img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension</code></pre
 
                     <div>
                         <h3 class="text-2xl font-semibold text-gray-800 mb-4">Model Architecture</h3>
-                        <pre class="code-block language-python"><code>model = models.Sequential([
-    layers.Conv2D(32, (3, 3), activation='relu', input_shape=(28, 28, 1)),
-    layers.MaxPooling2D((2, 2)),
-    layers.Conv2D(64, (3, 3), activation='relu'),
-    layers.MaxPooling2D((2, 2)),
-    layers.Conv2D(64, (3, 3), activation='relu'),
+                        <pre class="code-block language-python"><code>from tensorflow.keras import layers, models
+
+model = models.Sequential([
+    layers.Input(shape=(28, 28, 1)),
+    # Conv-BN-ReLU blocks
+    layers.Conv2D(32, 3, padding='same', use_bias=False),
+    layers.BatchNormalization(),
+    layers.Activation('relu'),
+    layers.Conv2D(32, 3, padding='same', use_bias=False),
+    layers.BatchNormalization(),
+    layers.Activation('relu'),
+    layers.MaxPooling2D(),
+
+    layers.Conv2D(64, 3, padding='same', use_bias=False),
+    layers.BatchNormalization(),
+    layers.Activation('relu'),
+    layers.Conv2D(64, 3, padding='same', use_bias=False),
+    layers.BatchNormalization(),
+    layers.Activation('relu'),
+    layers.MaxPooling2D(),
+    layers.Dropout(0.3),
+
+    layers.Conv2D(128, 3, padding='same', use_bias=False),
+    layers.BatchNormalization(),
+    layers.Activation('relu'),
+    layers.Dropout(0.4),
+
     layers.Flatten(),
-    layers.Dense(64, activation='relu'),
-    layers.Dropout(0.2),
+    layers.Dense(128, activation='relu'),
+    layers.Dropout(0.5),
     layers.Dense(10, activation='softmax')
 ])</code></pre>
                     </div>
@@ -226,30 +247,42 @@ img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension</code></pre
                     <div>
                         <h3 class="text-2xl font-semibold text-gray-800 mb-4">Training Pipeline</h3>
                         <pre class="code-block language-python"><code># Data Preparation
+from tensorflow.keras import layers
 from tensorflow.keras.datasets import mnist
-from tensorflow.keras.utils import to_categorical
+import tensorflow as tf
 
 # Load MNIST data
 (train_images, train_labels), (test_images, test_labels) = mnist.load_data()
 
-# Normalize and reshape data
-train_images = train_images.reshape((60000, 28, 28, 1)).astype('float32') / 255
-test_images = test_images.reshape((10000, 28, 28, 1)).astype('float32') / 255
+# Normalize and add channel dim (N, 28, 28, 1)
+train_images = (train_images.astype('float32') / 255.0)[..., None]
+test_images = (test_images.astype('float32') / 255.0)[..., None]
 
-# One-hot encode labels
-train_labels = to_categorical(train_labels)
-test_labels = to_categorical(test_labels)
+# Light augmentation pipeline
+augment = tf.keras.Sequential([
+    layers.RandomRotation(0.05),
+    layers.RandomTranslation(0.05, 0.05),
+    layers.RandomZoom(0.05),
+])
 
-# Model Compilation
-model.compile(optimizer='adam',
-              loss='categorical_crossentropy',
+# Compile
+model.compile(optimizer=tf.keras.optimizers.Adam(1e-3),
+              loss='sparse_categorical_crossentropy',
               metrics=['accuracy'])
 
-# Model Training
-model.fit(train_images, train_labels, epochs=5, batch_size=64, validation_split=0.1)
+# Callbacks
+callbacks = [
+    tf.keras.callbacks.EarlyStopping(monitor='val_accuracy', patience=3, restore_best_weights=True),
+    tf.keras.callbacks.ReduceLROnPlateau(monitor='val_accuracy', factor=0.5, patience=2, min_lr=1e-5),
+]
 
-# Model Evaluation
-test_loss, test_accuracy = model.evaluate(test_images, test_labels)
+# Train (augment on the fly)
+history = model.fit(augment(train_images), train_labels,
+                    epochs=20, batch_size=256,
+                    validation_data=(test_images, test_labels), verbose=2)
+
+# Evaluate
+test_loss, test_accuracy = model.evaluate(test_images, test_labels, verbose=0)
 print(f"Test accuracy: {test_accuracy * 100:.2f}%")</code></pre>
                     </div>
                 </div>

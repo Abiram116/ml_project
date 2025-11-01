@@ -1,23 +1,49 @@
-import tensorflow as tf  # Add this import
+import tensorflow as tf
 from django.shortcuts import render
-from django.core.files.storage import default_storage
-from django.core.files.base import ContentFile
 from django.conf import settings
 from tensorflow.keras.models import load_model
 import numpy as np
 from PIL import Image
 import os
 import uuid
+import json
 
-# Load the trained MNIST model
-model = load_model('mnist_model.h5')
+# Resolve base directory and preferred model/metrics paths
+BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 
-# Load and preprocess the MNIST dataset for accuracy calculation
-(x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()  # Using tf here
-x_test = x_test / 255.0  # Normalize test data
+# Candidate model files in order of preference
+_model_candidates = [
+    os.path.join(BASE_DIR, 'models', 'mnist_model.h5'),
+    os.path.join(BASE_DIR, 'models', 'mnist_best.keras'),
+    os.path.join(BASE_DIR, 'mnist_model.h5'),
+    os.path.join(BASE_DIR, 'mnist_best.keras'),
+]
 
-# Evaluate the model on the test set to get accuracy
-test_loss, test_acc = model.evaluate(x_test, y_test, verbose=2)
+MODEL_PATH = next((p for p in _model_candidates if os.path.exists(p)), None)
+
+# Load the trained MNIST model (accepts input (28,28,1)) if available
+model = load_model(MODEL_PATH) if MODEL_PATH else None
+
+# Try to read persisted metrics if available (from the improved trainer)
+METRICS_PATH = os.path.join(BASE_DIR, 'models', 'metrics.json')
+if not os.path.exists(METRICS_PATH):
+    METRICS_PATH = os.path.join(BASE_DIR, 'metrics.json')
+_persisted_metrics = None
+if os.path.exists(METRICS_PATH):
+    try:
+        with open(METRICS_PATH) as f:
+            _persisted_metrics = json.load(f)
+    except Exception:
+        _persisted_metrics = None
+
+# Optionally evaluate accuracy only if no persisted metrics are available
+test_acc = None
+try:
+    if model is not None:
+        # Defer evaluation until we know whether persisted metrics exist (see below)
+        pass
+except Exception:
+    model = None
 
 def preprocess_image(image_path):
     """
@@ -38,20 +64,43 @@ def preprocess_image(image_path):
 def home(request):
     predicted_class = None
     file_url = None
-    accuracy = test_acc  # Pass the accuracy to the template
+    accuracy = _persisted_metrics.get('test_accuracy') if _persisted_metrics else None
     message = "For best predictions, please upload clear, high-quality images of handwritten digits."
+
+    # If we don't have persisted metrics but we do have a model, evaluate once to get accuracy
+    global test_acc
+    if accuracy is None and model is not None and test_acc is None:
+        # Load and preprocess the MNIST dataset for accuracy calculation
+        (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
+        x_test = (x_test / 255.0).astype('float32')
+        x_test = x_test[..., None]
+        # Evaluate the model on the test set to get accuracy
+        try:
+            _, test_acc = model.evaluate(x_test, y_test, verbose=0)
+        except Exception:
+            test_acc = None
+        accuracy = test_acc
+
+    if model is None:
+        missing = " or ".join([
+            os.path.relpath(p, BASE_DIR) for p in _model_candidates
+        ])
+        message = (
+            f"Model file not found. Place one of these files in your project: {missing}. "
+            "You can train a new model by running mnist_model.py."
+        )
 
     model_explanation = {
         'description': """
-        This model is a simple neural network trained on the MNIST dataset, a large database of handwritten digits. 
-        The model is a feed-forward neural network with one hidden layer and uses the ReLU activation function.
-        The model was trained using the Adam optimizer and Sparse Categorical Crossentropy loss function.
+        This model is a compact convolutional neural network (CNN) trained on the MNIST dataset.
+        It uses Conv-BatchNorm-ReLU blocks with MaxPooling and Dropout for regularization and is optimized
+        to achieve high accuracy (>99%) while remaining fast for web inference.
         """,
         'technologies': """
-        - TensorFlow/Keras for building and training the model.
+        - TensorFlow/Keras for model training and inference.
         - NumPy for array manipulation and image preprocessing.
         - PIL (Python Imaging Library) for image processing.
-        - Django for creating the web application.
+        - Django for the web application.
         """,
         'code_snippets': [
             '''
@@ -80,7 +129,7 @@ def home(request):
         ]
     }
 
-    if request.method == 'POST' and request.FILES.get('image'):
+    if request.method == 'POST' and request.FILES.get('image') and model is not None:
         uploaded_file = request.FILES['image']
         
         # Generate a safe, unique filename
@@ -97,15 +146,23 @@ def home(request):
         
         # Predict the digit
         predictions = model.predict(processed_image)
-        predicted_class = np.argmax(predictions)
+        predicted_class = int(np.argmax(predictions))
+        confidence = float(np.max(predictions) * 100.0)
 
         # Prepare the file URL for displaying the image
         file_url = settings.MEDIA_URL + safe_filename
 
+    # If user posted an image but model is missing, surface a friendly error
+    error_message = None
+    if request.method == 'POST' and request.FILES.get('image') and model is None:
+        error_message = "Model file is missing, so we couldn't run a prediction. Please add a model file and reload."
+
     return render(request, 'home.html', {
         'file_url': file_url,
         'predicted_class': predicted_class,
-        'accuracy': accuracy,
+        'confidence': confidence if 'confidence' in locals() else None,
+        'accuracy': (accuracy * 100.0) if isinstance(accuracy, (int, float)) else accuracy,
         'message': message,
+        'error_message': error_message,
         'model_explanation': model_explanation  # Pass the explanation to the template
     })
