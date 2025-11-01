@@ -1,4 +1,4 @@
-import tensorflow as tf
+import logging
 from django.shortcuts import render
 from django.conf import settings
 from tensorflow.keras.models import load_model
@@ -7,6 +7,8 @@ from PIL import Image
 import os
 import uuid
 import json
+
+logger = logging.getLogger(__name__)
 
 # Resolve base directory and preferred model/metrics paths
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
@@ -21,8 +23,19 @@ _model_candidates = [
 
 MODEL_PATH = next((p for p in _model_candidates if os.path.exists(p)), None)
 
-# Load the trained MNIST model (accepts input (28,28,1)) if available
-model = load_model(MODEL_PATH) if MODEL_PATH else None
+# Lazily load the trained MNIST model (accepts input (28,28,1)) to reduce boot-time memory/CPU
+model = None
+
+def get_model():
+    global model
+    if model is None and MODEL_PATH:
+        try:
+            model = load_model(MODEL_PATH)
+            logger.info("Loaded model from %s", MODEL_PATH)
+        except Exception:
+            logger.exception("Failed to load model from %s", MODEL_PATH)
+            model = None
+    return model
 
 # Try to read persisted metrics if available (from the improved trainer)
 METRICS_PATH = os.path.join(BASE_DIR, 'models', 'metrics.json')
@@ -38,12 +51,6 @@ if os.path.exists(METRICS_PATH):
 
 # Optionally evaluate accuracy only if no persisted metrics are available
 test_acc = None
-try:
-    if model is not None:
-        # Defer evaluation until we know whether persisted metrics exist (see below)
-        pass
-except Exception:
-    model = None
 
 def preprocess_image(image_path):
     """
@@ -69,14 +76,15 @@ def home(request):
 
     # If we don't have persisted metrics but we do have a model, evaluate once to get accuracy
     global test_acc
-    if accuracy is None and model is not None and test_acc is None:
+    if accuracy is None and get_model() is not None and test_acc is None:
         # Load and preprocess the MNIST dataset for accuracy calculation
+        import tensorflow as tf  # Lazy import to avoid heavy import at boot
         (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
         x_test = (x_test / 255.0).astype('float32')
         x_test = x_test[..., None]
         # Evaluate the model on the test set to get accuracy
         try:
-            _, test_acc = model.evaluate(x_test, y_test, verbose=0)
+            _, test_acc = get_model().evaluate(x_test, y_test, verbose=0)
         except Exception:
             test_acc = None
         accuracy = test_acc
@@ -129,7 +137,7 @@ def home(request):
         ]
     }
 
-    if request.method == 'POST' and request.FILES.get('image') and model is not None:
+    if request.method == 'POST' and request.FILES.get('image') and get_model() is not None:
         uploaded_file = request.FILES['image']
         
         # Generate a safe, unique filename
@@ -137,6 +145,7 @@ def home(request):
         file_path = os.path.join(settings.MEDIA_ROOT, safe_filename)
 
         # Save the uploaded file securely
+        os.makedirs(settings.MEDIA_ROOT, exist_ok=True)
         with open(file_path, 'wb') as f:
             for chunk in uploaded_file.chunks():
                 f.write(chunk)
@@ -145,16 +154,24 @@ def home(request):
         processed_image = preprocess_image(file_path)
         
         # Predict the digit
-        predictions = model.predict(processed_image)
-        predicted_class = int(np.argmax(predictions))
-        confidence = float(np.max(predictions) * 100.0)
+        try:
+            predictions = get_model().predict(processed_image)
+            predicted_class = int(np.argmax(predictions))
+            confidence = float(np.max(predictions) * 100.0)
+        except Exception:
+            # Surface a friendly error instead of a 500
+            logger.exception("Prediction failed for file %s", safe_filename)
+            predictions = None
+            predicted_class = None
+            confidence = None
+            error_message = "Prediction failed. Please try a different image or reload the page."
 
         # Prepare the file URL for displaying the image
         file_url = settings.MEDIA_URL + safe_filename
 
     # If user posted an image but model is missing, surface a friendly error
     error_message = None
-    if request.method == 'POST' and request.FILES.get('image') and model is None:
+    if request.method == 'POST' and request.FILES.get('image') and get_model() is None:
         error_message = "Model file is missing, so we couldn't run a prediction. Please add a model file and reload."
 
     return render(request, 'home.html', {
